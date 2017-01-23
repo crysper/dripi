@@ -19,51 +19,40 @@ module Dripi::Item
     end
 
     def trigger(current_triggerer,sequence,extra={})
-
-      #  pp self.sidekiq_worker_class
        return false if sequence.current_scheduled?
-       return false if !trigger_test?(current_triggerer,sequence.drip_starter,extra)
-       if trigger_delay>0
-         schedule(current_triggerer,sequence,extra)
-       else
-         execute(current_triggerer,sequence,extra)
-       end
+       return false if !trigger_test?(current_triggerer,sequence,extra)
+       schedule(current_triggerer,sequence,extra)
     end
 
     def schedule(current_triggerer,sequence,extra)
-      sequence.current_scheduled!
-      set_sidekiq_worker(Oh.obj_to_s(current_triggerer),Oh.obj_to_s(sequence),Oh.oh_to_s(extra))
+      sid=set_job(current_triggerer,sequence,extra)
+      # pp sid
+      sequence.current_scheduled!(trigger_delay,sid.provider_job_id) if sid
     end
 
-    def execute_s(current_triggerer_s,sequence_s,extra_s)
-      execute(Oh.s_to_obj(current_triggerer_s),Oh.s_to_obj(sequence_s),Oh.s_to_oh(extra_s))
-    end
 
     def execute(current_triggerer,sequence,extra={})
-       return false if !execution_test?(current_triggerer,sequence.drip_starter,extra)
+       return false if !execution_test?(current_triggerer,sequence,extra)
        result=execute_action!(current_triggerer,sequence,extra)
        sequence.next if result
     end
 
+    def execute_job(current_triggerer_,sequence_,extra_)
+      execute(Dripi.s_to_obj(current_triggerer_),Dripi.s_to_obj(sequence_),Dripi.s_to_oh(extra_))
+    end
+
     private
-    def set_sidekiq_worker(current_triggerer_s,sequence_s,extra_s)
-      # pp self.sidekiq_worker_class.
-      # sidekiq_worker_class.class_eval do
-      #   define_method(:perform) do
-      #     puts var
-      #   end
-      # end
-      # sidekiq_worker_class.perform_in(3.minutes,current_triggerer_s,sequence_s,extra_s)
-      # # execute_s(current_triggerer_s,sequence_s,extra_s)
+    def set_job(current_triggerer,sequence,extra)
+      payload=[Dripi.obj_to_s(self),
+               Dripi.obj_to_s(current_triggerer),
+               Dripi.obj_to_s(sequence),
+               Dripi.oh_to_s(extra)]
+               pp payload
+      Dripi.configuration.job.constantize.set(wait: trigger_delay.try(:minutes)).perform_later(*payload)
     end
   end
 
   module ClassMethods
-      def item_extension(__options)
-        define_method(:sidekiq_worker_class) do
-           __options[:sidekiq_worker]
-        end
-    end
   end
 
 end

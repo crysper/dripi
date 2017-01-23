@@ -21,21 +21,19 @@ module Dripi
     raise NameError, "Template Class not initialized" if !const_avai?(configuration.template)
     raise NameError, "Sequence Class not initialized" if !const_avai?(configuration.sequence)
     raise NameError, "Item Class not initialized"     if !const_avai?(configuration.item)
-    # raise NameError, "Worker Class not initialized"   if !defined?(config.worker.constantize)
+    raise NameError, "Job Class not initialized"      if !const_avai?(configuration.job)
   end
 
   class Configuration
-    attr_accessor :template,:sequence,:item,:template_foreign_key,:worker_provider,:worker
+    attr_accessor :template,:sequence,:item,:template_foreign_key,:job
 
     def initialize
-
       @template= 'Drip::Template'
       @sequence= 'Drip::Sequence'
       @item= 'Drip::Item'
-
+      @job='DripSequenceJob'
       @template_foreign_key='drip_template_id'
-      @worker_provider=:sidekiq
-      @worker= ''
+
     end
   end
 

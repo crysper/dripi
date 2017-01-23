@@ -11,7 +11,7 @@ module Dripi::Utils
   end
 end
 
-module Dripi::Oh
+module Dripi
   def self.obj_to_s(obj)
     return nil if obj.nil?
     {class_name: obj.class.name,id: obj.id}
