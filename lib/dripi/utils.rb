@@ -12,24 +12,40 @@ module Dripi::Utils
 end
 
 module Dripi
-  def self.obj_to_s(obj)
-    return nil if obj.nil?
-    {class_name: obj.class.name,id: obj.id}
+  module Errors
+    class RailsVersionError < StandardError; def initialize(msg='Works only on Rails 5');super(msg); end;end
+        class ModelNotFound < StandardError; def initialize(msg);super(msg+' Model not initialized'); end;end    
   end
 
-  def self.s_to_obj(obj_s)
-    return nil if obj_s.nil?
-    obj_s[:class_name].constantize.find_by_id(obj_s[:id])
-  end
+  class << self
+    def rails5?
+         Rails.version.start_with? '5'
+    end
 
-  def self.oh_to_s(oh)
-    return nil if oh.nil?
-    oh.transform_values{|obj| obj.respond_to?(:id) ? obj_to_s(obj) : obj }
-  end
+    def obj_(oh)
+      return nil if oh.nil?
+      return o_(oh) if !oh.is_a?(Hash)
+      oh.transform_values{|o| obj_(o)}
+    end
 
+    def _obj(oh)
+      return nil if oh.nil?
+      return _o(oh) if !oh.is_a?(Hash) || (oh.keys.sort == [:class_name,:id])
+      oh.transform_values{|o| _obj(o)}
+    end
 
-  def self.s_to_oh(oh_s)
-    return nil if oh_s.nil?
-    oh_s.transform_values{|obj_s| (obj[:id] && obj[:class_name]) ? s_to_obj(obj_s) : obj_s}
+    private
+      def o_(oh)
+        return nil if oh.nil?
+        return oh if !oh.respond_to?(:id)
+        {class_name: oh.class.name,id: oh.id}
+      end
+
+      def _o(oh)
+        return nil if oh.nil?
+        return oh if !oh[:id] || !oh[:class_name]
+        oh[:class_name].constantize.find_by_id(oh[:id])
+      end
+
   end
 end

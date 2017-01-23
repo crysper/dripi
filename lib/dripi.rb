@@ -8,20 +8,23 @@ module Dripi
     attr_accessor :configuration
   end
 
+
   def self.configure
     self.configuration ||= Configuration.new
     yield(configuration) if block_given?
-
   end
+
   def self.const_avai?(const)
     const.constantize rescue nil
   end
+
   def self.check_config
+    raise Errors::RailsVersionError if !rails5?
     configure if configuration.nil?
-    raise NameError, "Template Class not initialized" if !const_avai?(configuration.template)
-    raise NameError, "Sequence Class not initialized" if !const_avai?(configuration.sequence)
-    raise NameError, "Item Class not initialized"     if !const_avai?(configuration.item)
-    raise NameError, "Job Class not initialized"      if !const_avai?(configuration.job)
+    raise Errors::ModelNotFound, "Template" if !const_avai?(configuration.template)
+    raise Errors::ModelNotFound, "Sequence" if !const_avai?(configuration.sequence)
+    raise Errors::ModelNotFound, "Item"     if !const_avai?(configuration.item)
+    raise Errors::ModelNotFound, "Job"      if !const_avai?(configuration.job)
   end
 
   class Configuration
@@ -33,11 +36,10 @@ module Dripi
       @item= 'Drip::Item'
       @job='DripSequenceJob'
       @template_foreign_key='drip_template_id'
-
     end
   end
 
-  module InstanceMethods
+  module DripableInstanceMethods
     def start_drip(template)
       itf=template.items.first
       seq=create_drip_sequence(current_id: itf.id)
@@ -51,7 +53,7 @@ module Dripi
     def acts_as_dripable(options={})
       Dripi.check_config
 
-      include InstanceMethods
+      include DripableInstanceMethods
       include_drip_template
       include_drip_sequence
       include_drip_item
@@ -63,19 +65,16 @@ module Dripi
     def include_drip_template
       template_class=Dripi.configuration.template.constantize
       template_class.include Template,Utils
-      # template_class.send(:item_extension,options)
     end
 
     def include_drip_sequence
       sequence_class=Dripi.configuration.sequence.constantize
       sequence_class.include Sequence,Utils
-      # sequence_class.send(:item_extension,options)
     end
 
     def include_drip_item
       item_class=Dripi.configuration.item.constantize
       item_class.include Item,Utils
-      # item_class.send(:item_extension,options)
     end
 
   end
